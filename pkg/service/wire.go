@@ -84,6 +84,8 @@ func InitializeServer(conf *config.Config, currentNode routing.LocalNode) (*Live
 		getSignalRelayConfig,
 		NewDefaultSignalServer,
 		routing.NewSignalClient,
+		getRoomConfig,
+		routing.NewRoomManagerClient,
 		rpc.NewKeepalivePubSub,
 		getPSRPCConfig,
 		getPSRPCClientParams,
@@ -109,6 +111,8 @@ func InitializeRouter(conf *config.Config, currentNode routing.LocalNode) (routi
 		getPSRPCConfig,
 		getPSRPCClientParams,
 		routing.NewSignalClient,
+		getRoomConfig,
+		routing.NewRoomManagerClient,
 		rpc.NewKeepalivePubSub,
 		routing.CreateRouter,
 	)
@@ -235,6 +239,10 @@ func createClientConfiguration() clientconfiguration.ClientConfigurationManager 
 
 func getLimitConf(config *config.Config) config.LimitConfig {
 	return config.Limit
+}
+
+func getRoomConfig(config *config.Config) config.RoomConfig {
+	return config.Room
 }
 
 func getSignalRelayConfig(config *config.Config) config.SignalRelayConfig {
