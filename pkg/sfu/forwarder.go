@@ -1555,6 +1555,7 @@ func (f *Forwarder) GetTranslationParams(extPkt *buffer.ExtPacket, layer int32) 
 	defer f.lock.Unlock()
 
 	if f.muted || f.pubMuted {
+		f.logger.Infow("DTDBG: dropping muted", "layer", layer, "sn", extPkt.Packet.SequenceNumber, "muted", f.muted, "pubMuted", f.pubMuted, "currentLayer", f.vls.GetCurrent(), "targetLayer", f.vls.GetTarget())
 		return TranslationParams{
 			shouldDrop: true,
 		}, nil
@@ -1568,6 +1569,7 @@ func (f *Forwarder) GetTranslationParams(extPkt *buffer.ExtPacket, layer int32) 
 		return f.getTranslationParamsVideo(extPkt, layer)
 	}
 
+	f.logger.Infow("DTDBG: dropping invalid kind", "layer", layer, "sn", extPkt.Packet.SequenceNumber, "kind", f.kind, "currentLayer", f.vls.GetCurrent(), "targetLayer", f.vls.GetTarget())
 	return TranslationParams{
 		shouldDrop: true,
 	}, ErrUnknownKind
@@ -1859,6 +1861,7 @@ func (f *Forwarder) getTranslationParamsCommon(extPkt *buffer.ExtPacket, layer i
 	if f.lastSSRC != extPkt.Packet.SSRC {
 		if err := f.processSourceSwitch(extPkt, layer); err != nil {
 			f.logger.Debugw("could not switch feed", "error", err, "refInfos", wrappedRefInfoLogger{f})
+			f.logger.Infow("DTDBG: dropping could not switch feed", "layer", layer, "sn", extPkt.Packet.SequenceNumber, "currentLayer", f.vls.GetCurrent(), "targetLayer", f.vls.GetTarget())
 			tp.shouldDrop = true
 			f.vls.Rollback()
 			return nil
@@ -1870,6 +1873,7 @@ func (f *Forwarder) getTranslationParamsCommon(extPkt *buffer.ExtPacket, layer i
 
 	tpRTP, err := f.rtpMunger.UpdateAndGetSnTs(extPkt, tp.marker)
 	if err != nil {
+		f.logger.Infow("DTDBG: dropping rtp munger error", "layer", layer, "sn", extPkt.Packet.SequenceNumber, "error", err, "currentLayer", f.vls.GetCurrent(), "targetLayer", f.vls.GetTarget())
 		tp.shouldDrop = true
 		if err == ErrPaddingOnlyPacket || err == ErrDuplicatePacket || err == ErrOutOfOrderSequenceNumberCacheMiss {
 			return nil
@@ -1901,12 +1905,14 @@ func (f *Forwarder) getTranslationParamsVideo(extPkt *buffer.ExtPacket, layer in
 	tp := TranslationParams{}
 	if !f.vls.GetTarget().IsValid() {
 		// stream is paused by streamallocator
+		f.logger.Infow("DTDBG: dropping target layer invalid", "layer", layer, "sn", extPkt.Packet.SequenceNumber, "targetLayer", f.vls.GetTarget(), "currentLayer", f.vls.GetCurrent())
 		tp.shouldDrop = true
 		return tp, nil
 	}
 
 	result := f.vls.Select(extPkt, layer)
 	if !result.IsSelected {
+		f.logger.Infow("DTDBG: dropping not selected", "layer", layer, "sn", extPkt.Packet.SequenceNumber, "targetLayer", f.vls.GetTarget(), "currentLayer", f.vls.GetCurrent(), "result", result)
 		tp.shouldDrop = true
 		if f.started && result.IsRelevant {
 			// call to update highest incoming sequence number and other internal structures
@@ -1947,6 +1953,7 @@ func (f *Forwarder) getTranslationParamsVideo(extPkt *buffer.ExtPacket, layer in
 		//
 		// To differentiate between the two cases, drop only when in DEFICIENT state.
 		//
+		f.logger.Infow("DTDBG: dropping congestion", "layer", layer, "sn", extPkt.Packet.SequenceNumber, "targetLayer", f.vls.GetTarget(), "currentLayer", f.vls.GetCurrent(), "result", result)
 		tp.shouldDrop = true
 		return tp, nil
 	}
@@ -1964,6 +1971,7 @@ func (f *Forwarder) translateCodecHeader(extPkt *buffer.ExtPacket, tp *Translati
 		tl,
 	)
 	if err != nil {
+		f.logger.Infow("DTDBG: dropping codec munger error", "sn", extPkt.Packet.SequenceNumber, "error", err, "currentLayer", f.vls.GetCurrent, "targetLayer", f.vls.GetTarget())
 		tp.shouldDrop = true
 		if err == codecmunger.ErrFilteredVP8TemporalLayer || err == codecmunger.ErrOutOfOrderVP8PictureIdCacheMiss {
 			if err == codecmunger.ErrFilteredVP8TemporalLayer {

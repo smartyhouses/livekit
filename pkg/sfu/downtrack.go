@@ -306,7 +306,8 @@ type DownTrack struct {
 	onRttUpdate                 func(dt *DownTrack, rtt uint32)
 	onCloseHandler              func(isExpectedToResume bool)
 
-	createdAt int64
+	createdAt   int64
+	packetsSeen [3]int
 }
 
 // NewDownTrack returns a DownTrack.
@@ -745,13 +746,24 @@ func (d *DownTrack) maxLayerNotifierWorker() {
 
 // WriteRTP writes an RTP Packet to the DownTrack
 func (d *DownTrack) WriteRTP(extPkt *buffer.ExtPacket, layer int32) error {
+	if int(layer) < len(d.packetsSeen) {
+		d.packetsSeen[layer]++
+		if d.packetsSeen[layer]%100 == 1 {
+			d.params.Logger.Infow("DTDBG: packets seen", "layer", layer, "packetsSeen", d.packetsSeen[layer])
+		}
+	}
 	if !d.writable.Load() || (extPkt.IsOutOfOrder && !d.rtpStats.IsActive()) {
+		d.params.Logger.Infow("DTDBG: not ready", "writable", d.writable.Load(), "ooo", extPkt.IsOutOfOrder, "active", d.rtpStats.IsActive())
 		// do not start on an out-of-order packet
 		return nil
+	}
+	if extPkt.KeyFrame {
+		d.params.Logger.Infow("DTDBG: key frame", "layer", layer, "sn", extPkt.Packet.SequenceNumber)
 	}
 
 	tp, err := d.forwarder.GetTranslationParams(extPkt, layer)
 	if tp.shouldDrop {
+		d.params.Logger.Infow("DTDBG: dropping", "layer", layer, "sn", extPkt.Packet.SequenceNumber)
 		if err != nil {
 			d.params.Logger.Errorw("could not get translation params", err)
 		}
