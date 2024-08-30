@@ -748,7 +748,7 @@ func (d *DownTrack) maxLayerNotifierWorker() {
 func (d *DownTrack) WriteRTP(extPkt *buffer.ExtPacket, layer int32) error {
 	if int(layer) < len(d.packetsSeen) {
 		d.packetsSeen[layer]++
-		if d.packetsSeen[layer]%100 == 1 {
+		if d.packetsSeen[layer]%10 == 1 {
 			d.params.Logger.Infow("DTDBG: packets seen", "layer", layer, "packetsSeen", d.packetsSeen[layer])
 		}
 	}
