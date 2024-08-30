@@ -763,7 +763,9 @@ func (d *DownTrack) WriteRTP(extPkt *buffer.ExtPacket, layer int32) error {
 
 	tp, err := d.forwarder.GetTranslationParams(extPkt, layer)
 	if tp.shouldDrop {
-		d.params.Logger.Infow("DTDBG: dropping", "layer", layer, "sn", extPkt.Packet.SequenceNumber)
+		if d.mime == "video/h264" {
+			d.params.Logger.Infow("DTDBG: dropping", "layer", layer, "sn", extPkt.Packet.SequenceNumber)
+		}
 		if err != nil {
 			d.params.Logger.Errorw("could not get translation params", err)
 		}

@@ -1912,7 +1912,9 @@ func (f *Forwarder) getTranslationParamsVideo(extPkt *buffer.ExtPacket, layer in
 
 	result := f.vls.Select(extPkt, layer)
 	if !result.IsSelected {
-		f.logger.Infow("DTDBG: dropping not selected", "layer", layer, "sn", extPkt.Packet.SequenceNumber, "targetLayer", f.vls.GetTarget(), "currentLayer", f.vls.GetCurrent(), "result", result)
+		if strings.ToLower(f.codec.MimeType) == "video/h264" {
+			f.logger.Infow("DTDBG: dropping not selected", "layer", layer, "sn", extPkt.Packet.SequenceNumber, "targetLayer", f.vls.GetTarget(), "currentLayer", f.vls.GetCurrent(), "result", result)
+		}
 		tp.shouldDrop = true
 		if f.started && result.IsRelevant {
 			// call to update highest incoming sequence number and other internal structures
