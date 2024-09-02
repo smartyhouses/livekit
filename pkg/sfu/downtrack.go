@@ -745,8 +745,7 @@ func (d *DownTrack) maxLayerNotifierWorker() {
 
 // WriteRTP writes an RTP Packet to the DownTrack
 func (d *DownTrack) WriteRTP(extPkt *buffer.ExtPacket, layer int32) error {
-	if !d.writable.Load() || (extPkt.IsOutOfOrder && !d.rtpStats.IsActive()) {
-		// do not start on an out-of-order packet
+	if !d.writable.Load() {
 		return nil
 	}
 
@@ -855,6 +854,7 @@ func (d *DownTrack) WriteRTP(extPkt *buffer.ExtPacket, layer int32) error {
 			extSequenceNumber: tp.rtp.extSequenceNumber,
 			extTimestamp:      tp.rtp.extTimestamp,
 			isKeyFrame:        extPkt.KeyFrame,
+			isOutOfOrder:      extPkt.IsOutOfOrder,
 			tp:                &tp,
 		},
 	)
@@ -1858,6 +1858,7 @@ func (d *DownTrack) retransmitPackets(nacks []uint16) {
 				extSequenceNumber: epm.extSequenceNumber,
 				extTimestamp:      epm.extTimestamp,
 				isRTX:             true,
+				isOutOfOrder:      true,
 			},
 		)
 		d.pacer.Enqueue(pacer.Packet{
@@ -2123,6 +2124,7 @@ type sendPacketMetadata struct {
 	extTimestamp         uint64
 	isKeyFrame           bool
 	isRTX                bool
+	isOutOfOrder         bool
 	isPadding            bool
 	shouldDisableCounter bool
 	tp                   *TranslationParams
@@ -2144,11 +2146,13 @@ func (d *DownTrack) sendingPacket(hdr *rtp.Header, payloadSize int, spmd *sendPa
 	}
 
 	// update RTPStats
+	paddingSize := payloadSize
 	if spmd.isPadding {
-		d.rtpStats.Update(spmd.packetTime, spmd.extSequenceNumber, spmd.extTimestamp, hdr.Marker, hdrSize, 0, payloadSize)
+		payloadSize = 0
 	} else {
-		d.rtpStats.Update(spmd.packetTime, spmd.extSequenceNumber, spmd.extTimestamp, hdr.Marker, hdrSize, payloadSize, 0)
+		paddingSize = 0
 	}
+	d.rtpStats.Update(spmd.packetTime, spmd.extSequenceNumber, spmd.extTimestamp, hdr.Marker, hdrSize, payloadSize, paddingSize, spmd.isOutOfOrder)
 
 	if spmd.isKeyFrame {
 		d.isNACKThrottled.Store(false)
