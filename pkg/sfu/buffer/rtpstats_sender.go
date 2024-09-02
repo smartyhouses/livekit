@@ -255,6 +255,13 @@ func (r *RTPStatsSender) Update(
 			// do not start on a padding only packet
 			return
 		}
+		if isOutOfOrder {
+			r.logger.Debugw(
+				"DTDBG: starting on out-of-order packet",
+				"sn", extSequenceNumber,
+				"payloadSize", payloadSize,
+			)
+		}
 
 		r.initialized = true
 
