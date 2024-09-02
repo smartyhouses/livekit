@@ -753,7 +753,7 @@ func (d *DownTrack) WriteRTP(extPkt *buffer.ExtPacket, layer int32) error {
 		}
 	}
 	if !d.writable.Load() || (extPkt.IsOutOfOrder && !d.rtpStats.IsActive()) {
-		d.params.Logger.Infow("DTDBG: not ready", "writable", d.writable.Load(), "ooo", extPkt.IsOutOfOrder, "active", d.rtpStats.IsActive())
+		d.params.Logger.Infow("DTDBG: not ready", "writable", d.writable.Load(), "ooo", extPkt.IsOutOfOrder, "active", d.rtpStats.IsActive(), "sn", extPkt.Packet.SequenceNumber)
 		// do not start on an out-of-order packet
 		return nil
 	}
