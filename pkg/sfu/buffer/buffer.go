@@ -647,8 +647,16 @@ func (b *Buffer) calc(rawPkt []byte, rtpPacket *rtp.Packet, arrivalTime int64, i
 	if ep == nil {
 		return
 	}
-	if ep.KeyFrame {
-		b.logger.Debugw("DTDBG: key frame", "sn", ep.Packet.SequenceNumber, "packetSize", len(ep.RawPacket), "payloadSize", len(ep.Packet.Payload))
+	if ep.KeyFrame || len(ep.Packet.Payload) < 50 {
+		b.logger.Infow(
+			"DTDBG: maybe key frame",
+			"kf", ep.KeyFrame,
+			"sn", ep.Packet.SequenceNumber,
+			"packetSize", len(ep.RawPacket),
+			"packet", ep.RawPacket,
+			"payloadSize", len(ep.Packet.Payload),
+			"payload", ep.Packet.Payload,
+		)
 	}
 	b.extPackets.PushBack(ep)
 

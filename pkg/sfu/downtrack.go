@@ -758,7 +758,16 @@ func (d *DownTrack) WriteRTP(extPkt *buffer.ExtPacket, layer int32) error {
 		return nil
 	}
 	if extPkt.KeyFrame || len(extPkt.Packet.Payload) < 50 {
-		d.params.Logger.Infow("DTDBG: key frame", "leyer", layer, "sn", extPkt.Packet.SequenceNumber, "packetSize", len(extPkt.RawPacket), "payloadSize", len(extPkt.Packet.Payload), "payload", extPkt.Packet.Payload, "packet", extPkt.RawPacket)
+		d.params.Logger.Infow(
+			"DTDBG: maybe key frame",
+			"leyer", layer,
+			"kf", extPkt.KeyFrame,
+			"sn", extPkt.Packet.SequenceNumber,
+			"packetSize", len(extPkt.RawPacket),
+			"packet", extPkt.RawPacket,
+			"payloadSize", len(extPkt.Packet.Payload),
+			"payload", extPkt.Packet.Payload,
+		)
 	}
 
 	tp, err := d.forwarder.GetTranslationParams(extPkt, layer)
