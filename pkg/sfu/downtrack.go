@@ -752,13 +752,13 @@ func (d *DownTrack) WriteRTP(extPkt *buffer.ExtPacket, layer int32) error {
 			d.params.Logger.Infow("DTDBG: packets seen", "layer", layer, "packetsSeen", d.packetsSeen[layer])
 		}
 	}
-	if !d.writable.Load() || (extPkt.IsOutOfOrder && !d.rtpStats.IsActive()) {
+	if !d.writable.Load() {
 		d.params.Logger.Infow("DTDBG: not ready", "writable", d.writable.Load(), "ooo", extPkt.IsOutOfOrder, "active", d.rtpStats.IsActive(), "sn", extPkt.Packet.SequenceNumber, "packetSize", len(extPkt.RawPacket), "payloadSize", len(extPkt.Packet.Payload))
 		// do not start on an out-of-order packet
 		return nil
 	}
-	if extPkt.KeyFrame {
-		d.params.Logger.Infow("DTDBG: key frame", "leyer", layer, "sn", extPkt.Packet.SequenceNumber, "packetSize", len(extPkt.RawPacket), "payloadSize", len(extPkt.Packet.Payload))
+	if extPkt.KeyFrame || len(extPkt.Packet.Payload) < 50 {
+		d.params.Logger.Infow("DTDBG: key frame", "leyer", layer, "sn", extPkt.Packet.SequenceNumber, "packetSize", len(extPkt.RawPacket), "payloadSize", len(extPkt.Packet.Payload), "payload", extPkt.Packet.Payload, "packet", extPkt.RawPacket)
 	}
 
 	tp, err := d.forwarder.GetTranslationParams(extPkt, layer)
@@ -869,6 +869,7 @@ func (d *DownTrack) WriteRTP(extPkt *buffer.ExtPacket, layer int32) error {
 			extSequenceNumber: tp.rtp.extSequenceNumber,
 			extTimestamp:      tp.rtp.extTimestamp,
 			isKeyFrame:        extPkt.KeyFrame,
+			isOutOfOrder:      extPkt.IsOutOfOrder,
 			tp:                &tp,
 		},
 	)
@@ -1872,6 +1873,7 @@ func (d *DownTrack) retransmitPackets(nacks []uint16) {
 				extSequenceNumber: epm.extSequenceNumber,
 				extTimestamp:      epm.extTimestamp,
 				isRTX:             true,
+				isOutOfOrder:      true,
 			},
 		)
 		d.pacer.Enqueue(pacer.Packet{
@@ -2138,6 +2140,7 @@ type sendPacketMetadata struct {
 	isKeyFrame           bool
 	isRTX                bool
 	isPadding            bool
+	isOutOfOrder         bool
 	shouldDisableCounter bool
 	tp                   *TranslationParams
 }
@@ -2159,9 +2162,9 @@ func (d *DownTrack) sendingPacket(hdr *rtp.Header, payloadSize int, spmd *sendPa
 
 	// update RTPStats
 	if spmd.isPadding {
-		d.rtpStats.Update(spmd.packetTime, spmd.extSequenceNumber, spmd.extTimestamp, hdr.Marker, hdrSize, 0, payloadSize)
+		d.rtpStats.Update(spmd.packetTime, spmd.extSequenceNumber, spmd.extTimestamp, hdr.Marker, hdrSize, 0, payloadSize, spmd.isOutOfOrder)
 	} else {
-		d.rtpStats.Update(spmd.packetTime, spmd.extSequenceNumber, spmd.extTimestamp, hdr.Marker, hdrSize, payloadSize, 0)
+		d.rtpStats.Update(spmd.packetTime, spmd.extSequenceNumber, spmd.extTimestamp, hdr.Marker, hdrSize, payloadSize, 0, spmd.isOutOfOrder)
 	}
 
 	if spmd.isKeyFrame {
