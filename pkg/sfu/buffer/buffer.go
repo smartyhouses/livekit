@@ -647,6 +647,9 @@ func (b *Buffer) calc(rawPkt []byte, rtpPacket *rtp.Packet, arrivalTime int64, i
 	if ep == nil {
 		return
 	}
+	if ep.KeyFrame {
+		b.logger.Debugw("DTDBG: key frame", "sn", ep.Packet.SequenceNumber)
+	}
 	b.extPackets.PushBack(ep)
 
 	if b.extPackets.Len() > b.bucket.Capacity() {
