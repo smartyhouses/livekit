@@ -753,18 +753,18 @@ func (d *DownTrack) WriteRTP(extPkt *buffer.ExtPacket, layer int32) error {
 		}
 	}
 	if !d.writable.Load() || (extPkt.IsOutOfOrder && !d.rtpStats.IsActive()) {
-		d.params.Logger.Infow("DTDBG: not ready", "writable", d.writable.Load(), "ooo", extPkt.IsOutOfOrder, "active", d.rtpStats.IsActive(), "sn", extPkt.Packet.SequenceNumber)
+		d.params.Logger.Infow("DTDBG: not ready", "writable", d.writable.Load(), "ooo", extPkt.IsOutOfOrder, "active", d.rtpStats.IsActive(), "sn", extPkt.Packet.SequenceNumber, "packetSize", len(extPkt.RawPacket), "payloadSize", len(extPkt.Packet.Payload))
 		// do not start on an out-of-order packet
 		return nil
 	}
 	if extPkt.KeyFrame {
-		d.params.Logger.Infow("DTDBG: key frame", "layer", layer, "sn", extPkt.Packet.SequenceNumber)
+		d.params.Logger.Infow("DTDBG: key frame", "leyer", layer, "sn", extPkt.Packet.SequenceNumber, "packetSize", len(extPkt.RawPacket), "payloadSize", len(extPkt.Packet.Payload))
 	}
 
 	tp, err := d.forwarder.GetTranslationParams(extPkt, layer)
 	if tp.shouldDrop {
 		if d.mime == "video/h264" {
-			d.params.Logger.Infow("DTDBG: dropping", "layer", layer, "sn", extPkt.Packet.SequenceNumber)
+			d.params.Logger.Infow("DTDBG: dropping", "layer", layer, "sn", extPkt.Packet.SequenceNumber, "packetSize", len(extPkt.RawPacket), "payloadSize", len(extPkt.Packet.Payload))
 		}
 		if err != nil {
 			d.params.Logger.Errorw("could not get translation params", err)
